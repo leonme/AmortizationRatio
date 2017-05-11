@@ -13,12 +13,12 @@ import java.util.List;
  * Created by Leon on 17/5/10.
  */
 public class AmortizationRatio {
-    public final String NODE_ROW = "Row";
-    public final String NODE_ROWSET = "Rowset";
-    public final String ATTR_PRT_GRP = "ParentGroupName";
-    public final String ATTR_GRP = "GroupName";
-    public final String ATTR_NODE_NAME = "NodeName";
-    public final String ATTR_SUM_ELEC = "SUM_POC_Electricity";
+    public static final String NODE_ROW = "Row";
+    public static final String NODE_ROWSET = "Rowset";
+    public static final String ATTR_PRT_GRP = "ParentGroupName";
+    public static final String ATTR_GRP = "GroupName";
+    public static final String ATTR_NODE_NAME = "NodeName";
+    public static final String ATTR_SUM_ELEC = "SUM_POC_Electricity";
 
     private Document input_Tree;
     private Document input_EnergyResult;
