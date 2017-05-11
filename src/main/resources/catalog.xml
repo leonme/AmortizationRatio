@@ -1,0 +1,5 @@
+<ComponentCatalog>
+    <Category Name="Custom Action" Description="Custom Action for POC">
+        <Component Type="Action" Name="AmortizationRatioAction" Description="Custom Action to build output XML" Label="Amortization Ratio" ClassName="com.sap.mii.custom.action.AmortizationRatioAction" AssemblyName="AmortizationRatioAction-1.0.jar" HelpFileName="" />
+    </Category>
+</ComponentCatalog>

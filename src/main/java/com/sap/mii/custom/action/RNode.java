@@ -1,6 +1,7 @@
 package com.sap.mii.custom.action;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 /**
  * Created by Leon on 17/5/10.
@@ -11,7 +12,8 @@ public class RNode {
     private BigDecimal ratio;
     private BigDecimal calcuValue;
     private BigDecimal lineLoss;
-    private RNode childNode;
+
+    private List<RNode> children;
 
     public RNode(String name, BigDecimal meterValue) {
         this.name = name;
@@ -76,11 +78,11 @@ public class RNode {
         this.lineLoss = lineLoss;
     }
 
-    public RNode getChildNode() {
-        return childNode;
+    public List<RNode> getChildren() {
+        return children;
     }
 
-    public void setChildNode(RNode childNode) {
-        this.childNode = childNode;
+    public void setChildren(List<RNode> children) {
+        this.children = children;
     }
 }
