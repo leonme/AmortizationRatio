@@ -62,9 +62,9 @@ public class AmortizationRatioAction extends ActionReflectionBase {
             for(Iterator it = rowElements.iterator(); it.hasNext();){
                 Element rowElement = (Element) it.next();
                 if(rootNodeName.equalsIgnoreCase(rowElement.elementText(AmortizationRatio.ATTR_NODE_NAME))) {
-                    rootNode.setMeterValue(new BigDecimal(rowElement.elementText(AmortizationRatio.ATTR_SUM_ELEC)));
+                    rootNode.setMeterValue(new BigDecimal(rowElement.elementText(AmortizationRatio.ATTR_SUM_ELEC)).setScale(5, BigDecimal.ROUND_HALF_UP));
                     rootNode.setRatio(new BigDecimal(1));
-                    rootNode.setCalcuValue(new BigDecimal(rowElement.elementText(AmortizationRatio.ATTR_SUM_ELEC)));
+                    rootNode.setCalcuValue(new BigDecimal(rowElement.elementText(AmortizationRatio.ATTR_SUM_ELEC)).setScale(5, BigDecimal.ROUND_HALF_UP));
                     rootNode.setLineLoss(new BigDecimal(0));
                 }
             }
@@ -132,7 +132,7 @@ public class AmortizationRatioAction extends ActionReflectionBase {
                 for(Iterator energyIt = rowEnergyElements.iterator(); energyIt.hasNext();) {
                     Element rowEnergyElement = (Element) energyIt.next();
                     if(childNode.getName().equalsIgnoreCase(rowEnergyElement.elementText(AmortizationRatio.ATTR_NODE_NAME))){
-                        BigDecimal childValue = new BigDecimal(rowEnergyElement.elementText(AmortizationRatio.ATTR_SUM_ELEC));
+                        BigDecimal childValue = new BigDecimal(rowEnergyElement.elementText(AmortizationRatio.ATTR_SUM_ELEC)).setScale(5, BigDecimal.ROUND_HALF_UP);
                         childNode.setMeterValue(childValue);
                         sumChildValue = sumChildValue.add(childValue);
                     }
@@ -140,12 +140,15 @@ public class AmortizationRatioAction extends ActionReflectionBase {
                 childNodes.add(childNode);
             }
         }
+        if(childNodes.size()>0){
+            node.setLineLoss(node.getMeterValue().subtract(sumChildValue));
+        }
         for(RNode childNode : childNodes) {
             childNode.setRatio(node.getRatio()
                     .multiply(childNode.getMeterValue()
-                            .divide(sumChildValue, 5, BigDecimal.ROUND_HALF_UP)));
-            childNode.setCalcuValue(node.getMeterValue().multiply(childNode.getRatio()));
-            childNode.setLineLoss(node.getMeterValue().subtract(childNode.getCalcuValue()));
+                            .divide(sumChildValue, 5, BigDecimal.ROUND_HALF_UP)).setScale(5, BigDecimal.ROUND_HALF_UP));
+            childNode.setCalcuValue(node.getMeterValue().multiply(childNode.getRatio()).setScale(5, BigDecimal.ROUND_HALF_UP));
+            childNode.setLineLoss(new BigDecimal(0));
         }
         node.setChildren(childNodes);
         for(RNode childNode : childNodes) {
