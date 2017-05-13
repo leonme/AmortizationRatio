@@ -1,6 +1,7 @@
-package com.sap.mii.custom.action;
+package com.sap.mii.custom.main;
 
 import com.google.gson.Gson;
+import com.sap.mii.custom.action.RNode;
 import org.dom4j.Document;
 import org.dom4j.Element;
 

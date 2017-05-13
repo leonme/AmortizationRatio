@@ -1,6 +1,7 @@
 package com.sap.mii.custom.action;
 
 import com.google.gson.Gson;
+import com.sap.mii.custom.main.AmortizationRatio;
 import com.sap.xmii.xacute.actions.ActionReflectionBase;
 import com.sap.xmii.xacute.core.ILog;
 import com.sap.xmii.xacute.core.Transaction;

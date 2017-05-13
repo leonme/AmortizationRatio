@@ -59,7 +59,7 @@
                     </descriptorRefs>
                     <archive>
                         <manifest>
-                            <mainClass>com.sap.mii.custom.action.AmortizationRatio</mainClass>
+                            <mainClass>com.sap.mii.custom.main.AmortizationRatio</mainClass>
                         </manifest>
                     </archive>
                 </configuration>
