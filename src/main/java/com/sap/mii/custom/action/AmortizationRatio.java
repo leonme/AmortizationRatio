@@ -1,9 +1,6 @@
 package com.sap.mii.custom.action;
 
 import com.google.gson.Gson;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
 import org.dom4j.Document;
 import org.dom4j.Element;
 
@@ -16,13 +13,12 @@ import java.util.List;
  * Created by Leon on 17/5/10.
  */
 public class AmortizationRatio {
-    public final String NODE_ROOT = "Root";
-    public final String NODE_ROW = "Row";
-    public final String ATTR_PRT_GRP = "ParentGroupName";
-    public final String ATTR_GRP = "GroupName";
-    public final String ATTR_NODE_NAME = "NodeName";
-    public final String ATTR_SUM_ELEC = "SUM_POC_Electricity";
-    public final String JSON_CHILD = "Children";
+    public static final String NODE_ROW = "Row";
+    public static final String NODE_ROWSET = "Rowset";
+    public static final String ATTR_PRT_GRP = "ParentGroupName";
+    public static final String ATTR_GRP = "GroupName";
+    public static final String ATTR_NODE_NAME = "NodeName";
+    public static final String ATTR_SUM_ELEC = "SUM_POC_Electricity";
 
     private Document input_Tree;
     private Document input_EnergyResult;
@@ -36,64 +32,60 @@ public class AmortizationRatio {
 
     public void Invoke(){
         String rootNodeName = input_RootNodeName;
-        JsonObject outputJson = new JsonParser().parse("{}").getAsJsonObject();
         Gson gson = new Gson();
         RNode rootNode = new RNode(rootNodeName);
         Element rootElement = input_EnergyResult.getRootElement();
-        List<Element> rowElements = rootElement.elements(NODE_ROW);
+        List<Element> rowElements = rootElement.element(NODE_ROWSET).elements(NODE_ROW);
         for(Iterator it = rowElements.iterator(); it.hasNext();){
             Element rowElement = (Element) it.next();
-            if(rootNodeName == rowElement.attributeValue(ATTR_NODE_NAME)) {
-                rootNode.setMeterValue(new BigDecimal(rowElement.attributeValue(ATTR_SUM_ELEC)));
+            if(rootNodeName.equalsIgnoreCase(rowElement.elementText(ATTR_NODE_NAME))) {
+                rootNode.setMeterValue(new BigDecimal(rowElement.elementText(ATTR_SUM_ELEC)).setScale(5, BigDecimal.ROUND_HALF_UP));
                 rootNode.setRatio(new BigDecimal(1));
-                rootNode.setCalcuValue(new BigDecimal(rowElement.attributeValue(ATTR_SUM_ELEC)));
+                rootNode.setCalcuValue(new BigDecimal(rowElement.elementText(ATTR_SUM_ELEC)).setScale(5, BigDecimal.ROUND_HALF_UP));
                 rootNode.setLineLoss(new BigDecimal(0));
             }
         }
-
-        JsonElement jsonElements = passTree(rootNode, gson.toJsonTree(rootNode));
-        outputJson.add(NODE_ROOT, jsonElements);
-        output_JsonStr = gson.toJson(outputJson);
+        RNode structuredRNode = passTree(rootNode);
+        output_JsonStr = gson.toJson(structuredRNode);
     }
 
-    public JsonElement passTree(RNode node, JsonElement jsonElement) {
-        Gson gson = new Gson();
+    public RNode passTree(RNode node) {
         Element rootTreeElement = input_Tree.getRootElement();
         Element rootEnergyElement = input_EnergyResult.getRootElement();
-        List<Element> rowTreeElements = rootTreeElement.elements(NODE_ROW);
-        List<Element> rowEnergyElements = rootEnergyElement.elements(NODE_ROW);
-        List<RNode> childNodes = new ArrayList<RNode>();
+        List<Element> rowTreeElements = rootTreeElement.element(NODE_ROWSET).elements(NODE_ROW);
+        List<Element> rowEnergyElements = rootEnergyElement.element(NODE_ROWSET).elements(NODE_ROW);
+        List<RNode> childNodes = new ArrayList<>();
         BigDecimal sumChildValue = new BigDecimal(0);
-        boolean isLeafNode = true;
         for(Iterator treeIt = rowTreeElements.iterator(); treeIt.hasNext();){
             Element rowTreeElement = (Element) treeIt.next();
-            if( node.getName() == rowTreeElement.attributeValue(ATTR_PRT_GRP)){
-                isLeafNode = false;
-                RNode childNode = new RNode(rowTreeElement.attributeValue(ATTR_GRP));
+            if( node.getName().equalsIgnoreCase(rowTreeElement.elementText(ATTR_PRT_GRP))){
+                RNode childNode = new RNode(rowTreeElement.elementText(ATTR_GRP));
                 for(Iterator energyIt = rowEnergyElements.iterator(); energyIt.hasNext();) {
                     Element rowEnergyElement = (Element) energyIt.next();
-                    if(childNode.getName() == rowEnergyElement.attributeValue(ATTR_NODE_NAME)){
-                        BigDecimal childValue = new BigDecimal(rowEnergyElement.attributeValue(ATTR_SUM_ELEC));
+                    if(childNode.getName().equalsIgnoreCase(rowEnergyElement.elementText(ATTR_NODE_NAME))){
+                        BigDecimal childValue = new BigDecimal(rowEnergyElement.elementText(ATTR_SUM_ELEC)).setScale(5, BigDecimal.ROUND_HALF_UP);
                         childNode.setMeterValue(childValue);
-                        sumChildValue.add(childValue);
+                        sumChildValue = sumChildValue.add(childValue);
                     }
                 }
                 childNodes.add(childNode);
             }
         }
-        if(childNodes.size() > 0) {
-            for(RNode childNode : childNodes) {
-                childNode.setRatio(childNode.getMeterValue().divide(sumChildValue));
-                childNode.setCalcuValue(node.getMeterValue().multiply(childNode.getRatio()));
-                childNode.setLineLoss(node.getMeterValue().subtract(childNode.getCalcuValue()));
-            }
-            jsonElement.getAsJsonObject().add(JSON_CHILD, gson.toJsonTree(childNodes));
+        if(childNodes.size()>0){
+            node.setLineLoss(node.getMeterValue().subtract(sumChildValue));
         }
-
-        if(isLeafNode) {
-            // TODO: 递归判断
+        for(RNode childNode : childNodes) {
+            childNode.setRatio(node.getRatio()
+                    .multiply(childNode.getMeterValue()
+                            .divide(sumChildValue, 5, BigDecimal.ROUND_HALF_UP)).setScale(5, BigDecimal.ROUND_HALF_UP));
+            childNode.setCalcuValue(node.getMeterValue().multiply(childNode.getRatio()).setScale(5, BigDecimal.ROUND_HALF_UP));
+            childNode.setLineLoss(new BigDecimal(0));
         }
-        return jsonElement;
+        node.setChildren(childNodes);
+        for(RNode childNode : childNodes) {
+            passTree(childNode);
+        }
+        return node;
     }
 
     public Document getInputTree() {
