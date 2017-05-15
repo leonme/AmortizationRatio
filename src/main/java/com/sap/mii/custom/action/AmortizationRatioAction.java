@@ -7,12 +7,16 @@ import com.sap.xmii.xacute.core.ILog;
 import com.sap.xmii.xacute.core.Transaction;
 import org.dom4j.Document;
 import org.dom4j.DocumentException;
+import org.dom4j.DocumentHelper;
 import org.dom4j.Element;
 import org.dom4j.io.SAXReader;
 
 import java.io.ByteArrayInputStream;
 import java.math.BigDecimal;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
 
@@ -30,6 +34,8 @@ public class AmortizationRatioAction extends ActionReflectionBase {
 
     // output parameter of return json string
     private String output_JsonStr;
+    // output parameter of return Mii XML string
+    private String output_XMLStr;
 
     public AmortizationRatioAction() throws DocumentException {
         input_TreeXML = new String("");
@@ -71,6 +77,7 @@ public class AmortizationRatioAction extends ActionReflectionBase {
             }
             RNode structuredRNode = passTree(rootNode);
             output_JsonStr = gson.toJson(structuredRNode);
+            output_XMLStr = parseMiiXml(structuredRNode);
             _success=true;
         }catch (Exception e) {
             _success=false;// Set _success to false if any exception is cought
@@ -107,6 +114,9 @@ public class AmortizationRatioAction extends ActionReflectionBase {
         return output_JsonStr;
     }
 
+    public String getOutXML() {
+        return output_XMLStr;
+    }
     /**
      * This is required to make the Configure Button Disabled
      * Note: If you want to have Custom ConfigureDialog, you need not put this method.
@@ -114,6 +124,106 @@ public class AmortizationRatioAction extends ActionReflectionBase {
      */
     public boolean isConfigurable(){
         return false;
+    }
+
+    private String parseMiiXml(RNode rNode) {
+        String outXmlStr = new String();
+        Document outDoc = DocumentHelper.createDocument();
+        DateFormat sdf = new SimpleDateFormat(AmortizationRatio.DATE_FORMAT);
+        Element root = DocumentHelper.createElement(AmortizationRatio.NODE_ROWSETS);
+        root.addAttribute(AmortizationRatio.ATTR_CATCHEDTIME,"");
+        root.addAttribute(AmortizationRatio.ATTR_DATECREATED, sdf.format(new Date()));
+        root.addAttribute(AmortizationRatio.ATTR_ENDDATE, sdf.format(new Date()));
+        root.addAttribute(AmortizationRatio.ATTR_STARTDATE, sdf.format(new Date()));
+        root.addAttribute(AmortizationRatio.ATTR_VERSION, AmortizationRatio.VERSION);
+
+        Element rowset = DocumentHelper.createElement(AmortizationRatio.NODE_ROWSET);
+        //create Columns
+        Element colums = DocumentHelper.createElement(AmortizationRatio.NODE_COLUMNS);
+        // create Column
+        Element nodeNameColumn = DocumentHelper.createElement(AmortizationRatio.NODE_COLUMN);
+        nodeNameColumn = setColumnAttributes(nodeNameColumn, AmortizationRatio.NODE_NODENAME, AmortizationRatio.SQLTYPE_STRING);
+        colums.add(nodeNameColumn);
+
+        Element meterValueColumn = DocumentHelper.createElement(AmortizationRatio.NODE_COLUMN);
+        meterValueColumn = setColumnAttributes(meterValueColumn, AmortizationRatio.NODE_METERVALUE, AmortizationRatio.SQLTYPE_NUMBER);
+        colums.add(meterValueColumn);
+
+        Element ratioColumn = DocumentHelper.createElement(AmortizationRatio.NODE_COLUMN);
+        ratioColumn = setColumnAttributes(ratioColumn, AmortizationRatio.NODE_RATIO, AmortizationRatio.SQLTYPE_NUMBER);
+        colums.add(ratioColumn);
+
+        Element calcuValueColumn = DocumentHelper.createElement(AmortizationRatio.NODE_COLUMN);
+        calcuValueColumn = setColumnAttributes(calcuValueColumn, AmortizationRatio.NODE_CALCUVALUE, AmortizationRatio.SQLTYPE_NUMBER);
+        colums.add(calcuValueColumn);
+
+        Element lineLossColumn = DocumentHelper.createElement(AmortizationRatio.NODE_COLUMN);
+        lineLossColumn = setColumnAttributes(lineLossColumn, AmortizationRatio.NODE_LINELOSS, AmortizationRatio.SQLTYPE_NUMBER);
+        colums.add(lineLossColumn);
+
+        Element parentNodeColumn = DocumentHelper.createElement(AmortizationRatio.NODE_COLUMN);
+        parentNodeColumn = setColumnAttributes(parentNodeColumn, AmortizationRatio.NODE_PARENTNODE, AmortizationRatio.SQLTYPE_STRING);
+        colums.add(parentNodeColumn);
+
+        rowset.add(colums);
+
+        List<Element> rows = new ArrayList<>();
+        rows = generateRowElements(rows, rNode, "---");
+
+        for(Element row : rows){
+            rowset.add(row);
+        }
+
+        root.add(rowset);
+        outDoc.setRootElement(root);
+        outXmlStr = outDoc.asXML();
+        return outXmlStr;
+    }
+
+    private List<Element> generateRowElements(List<Element> rows, RNode rNode, String parent) {
+        Element row = DocumentHelper.createElement(AmortizationRatio.NODE_ROW);
+
+        Element name = DocumentHelper.createElement(AmortizationRatio.NODE_NODENAME);
+        name.addText(rNode.getName());
+        row.add(name);
+
+        Element meterValue = DocumentHelper.createElement(AmortizationRatio.NODE_METERVALUE);
+        meterValue.addText(rNode.getMeterValue().toString());
+        row.add(meterValue);
+
+        Element ratio = DocumentHelper.createElement(AmortizationRatio.NODE_RATIO);
+        ratio.addText(rNode.getRatio().toString());
+        row.add(ratio);
+
+        Element calcuValue = DocumentHelper.createElement(AmortizationRatio.NODE_CALCUVALUE);
+        calcuValue.addText(rNode.getCalcuValue().toString());
+        row.add(calcuValue);
+
+        Element lineLoss = DocumentHelper.createElement(AmortizationRatio.NODE_LINELOSS);
+        lineLoss.addText(rNode.getLineLoss().toString());
+        row.add(lineLoss);
+
+        Element parentNode = DocumentHelper.createElement(AmortizationRatio.NODE_PARENTNODE);
+        parentNode.addText(parent);
+        row.add(parentNode);
+
+        rows.add(row);
+
+        for(RNode childNode : rNode.getChildren()){
+            generateRowElements(rows, childNode, rNode.getName());
+        }
+
+        return rows;
+    }
+
+    private Element setColumnAttributes(Element columnElement, String columnName, String sqlType) {
+        columnElement.addAttribute(AmortizationRatio.NODE_COLUMN_DESC, columnName);
+        columnElement.addAttribute(AmortizationRatio.NODE_COLUMN_MAXRANGE, "0.0");
+        columnElement.addAttribute(AmortizationRatio.NODE_COLUMN_MINRANGE, "0.0");
+        columnElement.addAttribute(AmortizationRatio.NODE_COLUMN_NAME, columnName);
+        columnElement.addAttribute(AmortizationRatio.NODE_COLUMN_SQLDATATYPE, sqlType);
+        columnElement.addAttribute(AmortizationRatio.NODE_COLUMN_SOURCECOLUMN, columnName);
+        return columnElement;
     }
 
     public RNode passTree(RNode node) throws DocumentException {
